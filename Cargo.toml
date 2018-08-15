@@ -1,0 +1,6 @@
+[package]
+name = "riprap"
+version = "0.1.0"
+authors = ["Darcy Jones <darcy.ab.jones@gmail.com>"]
+
+[dependencies]
