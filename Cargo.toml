@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Darcy Jones <darcy.ab.jones@gmail.com>"]
 
 [dependencies]
-rust-htslib = "*"
-bio = "*"
+clap = "2.32.0"
+rust-htslib = "0.21.0"
+bio = "0.21.0"
