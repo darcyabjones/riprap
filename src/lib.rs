@@ -6,10 +6,10 @@ pub mod gc {
     use bio::io::fasta;
     use freqs::Frequencies;
 
-    pub fn gc_content(seq: &fasta::Record) -> f64 {
+    pub fn gc_content(seq: &[u8]) -> f64 {
 
         let mut freq = Frequencies::new(6);
-        freq.extend(seq.seq());
+        freq.extend(seq);
 
         let gc = (freq.count(&&b'G') + freq.count(&&b'C')) as f64;
         let len = seq.seq().len() as f64;
