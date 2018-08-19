@@ -1,8 +1,9 @@
 extern crate riprap;
 extern crate clap;
 
-use riprap::cal;
+use riprap::runner;
 use clap::{App, SubCommand, Arg};
+use std::path::Path;
 
 fn main() {
 
@@ -18,6 +19,7 @@ fn main() {
              .takes_value(true))
         .get_matches();
 
-    println!("{}", matches.value_of("fasta").unwrap_or("default"));
-    cal::run()
+    let fasta = matches.value_of("fasta").unwrap_or("default");
+    println!("{}", fasta);
+    runner::run(Path::new(fasta))
 }
