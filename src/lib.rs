@@ -1,68 +1,67 @@
 extern crate bio;
+extern crate rust_htslib;
 
 pub mod freqs;
+pub mod stats;
 
-pub mod gc {
-    use bio::io::fasta;
-    use freqs::Frequencies;
+pub mod snp {
+    use rust_htslib::bcf;
 
-    pub fn gc_content(seq: &[u8]) -> f64 {
 
-        let mut freq = Frequencies::new(6);
-        freq.extend(seq);
-
-        let gc = (freq.count(&&b'G') + freq.count(&&b'C')) as f64;
-        let len = seq.seq().len() as f64;
-
-        gc / len
-    }
-}
-
-pub mod cri {
-    use freqs::Frequencies;
-
-    pub fn cri(seq: &[u8]) -> f64 {
-        let dinucs = seq.windows(2).map(|x| [x[0], x[1]]);
-
-        let mut di_freq = Frequencies::new(25);
-        di_freq.extend(dinucs);
-
-        let ta = di_freq.count(b"TA") as f64;
-        let at = di_freq.count(b"AT") as f64;
-
-        let ca = di_freq.count(b"CA") as f64;
-        let ac = di_freq.count(b"AC") as f64;
-
-        let gt = di_freq.count(b"GT") as f64;
-        let tg = di_freq.count(b"TG") as f64;
-
-        let num = ca + tg;
-        let denom = ac + gt;
-        let ratio = if denom == 0.0 {
-            0.0
-        } else {
-            num / denom
-        };
-
-        let offset = ta / at;
-        offset - ratio
-    }
 }
 
 pub mod runner {
 
     use std::path::Path;
     use bio::io::fasta;
-    use cri;
+    use rust_htslib::bcf;
+    use rust_htslib::bcf::Read;
+    use rust_htslib::bcf::Record;
+    use stats;
+    use std::str;
 
-    pub fn run(path: &Path) {
+    pub fn run_gc(path: &Path, size: usize, step: usize) {
 
         let reader = fasta::Reader::from_file(path).unwrap();
 
         for record in reader.records() {
-            let frac = cri::cri(&record.unwrap().seq()); 
-            println!("{}", frac);
+            let rec = record.unwrap();
+            let frac = stats::run_sliding_windows(&rec, size, step, stats::gc_content); 
+            for (seqid, start, end, score) in frac {
+                println!("{}\t{}\t{}\t{}", seqid, start, end, score);
+            }
         }
 
+    }
+
+    pub fn run_cri(path: &Path, size: usize, step: usize) {
+
+        let reader = fasta::Reader::from_file(path).unwrap();
+
+        for record in reader.records() {
+            let rec = record.unwrap();
+            let frac = stats::run_sliding_windows(&rec, size, step, stats::cri); 
+            for (seqid, start, end, score) in frac {
+                println!("{}\t{}\t{}\t{}", seqid, start, end, score);
+            }
+        }
+
+    }
+
+    pub fn run_ripsnp(fasta: &Path, vcf: &Path) {
+        let freader = fasta::Reader::from_file(fasta).unwrap();
+        let mut breader = bcf::Reader::from_path(vcf).unwrap();
+
+        let samples: Vec<&str> = breader.header().samples().iter().map(|x| str::from_utf8(x).unwrap()).cloned().collect();
+
+        for record in breader.records() {
+            let mut this = record.unwrap();
+            println!("id {:?}", this.id());
+            println!("pos {:?}", this.pos());
+            println!("alleles {:?}", this.alleles());
+            println!("geno {:?}", this.genotypes().unwrap());
+            println!("geno 1 {:?}", this.genotypes().unwrap().get(2));
+            break;
+        }
     }
 }
