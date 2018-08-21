@@ -1,5 +1,6 @@
 extern crate bio;
 extern crate rust_htslib;
+#[macro_use] extern crate failure;
 
 pub mod freqs;
 pub mod stats;
@@ -12,16 +13,14 @@ pub mod runner {
 
     use stats;
     use snp;
-    use errors;
-    use std::path::Path;
-    use std::error::Error;
+    use errors::{UnitError, CliError};
+    use std::path::PathBuf;
     use bio::io::fasta;
     use rust_htslib::bcf;
     use rust_htslib::bcf::Read;
-    use rust_htslib::bcf::Record;
 
 
-    pub fn run_gc(path: &Path, size: usize, step: usize) -> errors::UnitError{
+    pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitError<CliError>{
 
         let reader = fasta::Reader::from_file(path).unwrap();
 
@@ -32,10 +31,10 @@ pub mod runner {
                 println!("{}\t{}\t{}\t{}", seqid, start, end, score);
             }
         }
-    Ok(())
+        Ok(())
     }
 
-    pub fn run_cri(path: &Path, size: usize, step: usize) -> errors::UnitError {
+    pub fn run_cri(path: &PathBuf, size: usize, step: usize) -> UnitError<CliError> {
 
         let reader = fasta::Reader::from_file(path).unwrap();
 
@@ -49,7 +48,7 @@ pub mod runner {
         Ok(())
     }
 
-    pub fn run_ripsnp(fasta: &Path, vcf: &Path) -> errors::UnitError {
+    pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitError<CliError> {
         let freader = fasta::Reader::from_file(fasta).unwrap();
         let mut breader = bcf::Reader::from_path(vcf).unwrap();
 

@@ -7,3 +7,4 @@ authors = ["Darcy Jones <darcy.ab.jones@gmail.com>"]
 clap = "2.32.0"
 rust-htslib = "0.21.0"
 bio = "0.21.0"
+failure = "0.1.2"
