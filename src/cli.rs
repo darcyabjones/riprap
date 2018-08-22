@@ -1,4 +1,4 @@
-use riprap::errors::CliError;
+use riprap::errors::MyError;
 
 use std::env;
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ fn is_usize(i: String) -> Result<(), String> {
 }
 
 pub trait Config {
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, CliError>;
+    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, MyError>;
 }
 
 #[derive(Debug)]
@@ -31,9 +31,9 @@ pub struct SNPConfig {
 }
 
 impl Config for WindowConfig {
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, CliError> {
+    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, MyError> {
         let fasta = app.value_of("fasta").unwrap();
-        let window = app.value_of("size").unwrap().parse::<usize>().unwrap();
+        let window = app.value_of("window").unwrap().parse::<usize>().unwrap();
         let step = app.value_of("step").unwrap().parse::<usize>().unwrap();
         let config = Self {fasta: PathBuf::from(fasta), window: window, step: step};
         Ok(Box::new(config))
@@ -41,7 +41,7 @@ impl Config for WindowConfig {
 }
 
 impl Config for SNPConfig {
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, CliError> {
+    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, MyError> {
         let fasta = app.value_of("infasta").unwrap();
         let vcf = app.value_of("invcf").unwrap();
         let config = Self { fasta: PathBuf::from(fasta), vcf: PathBuf::from(vcf) };
@@ -65,6 +65,7 @@ pub fn cli_sub_sliding(name: &'static str, about: &'static str) ->  App<'static,
         .about(about)
         .arg(Arg::with_name("fasta")
              .help("The input fasta")
+             .index(1)
              .required(true))
         .arg(Arg::with_name("window")
              .short("w")

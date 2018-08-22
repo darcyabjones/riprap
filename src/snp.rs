@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use bio::io::fasta;
 use rust_htslib::bcf;
 use rust_htslib::bcf::Read;
-use rust_htslib::bcf::Record;
+//use rust_htslib::bcf::Record;
 
 
 pub fn get_samples(reader: &bcf::Reader) -> Vec<&str> {
