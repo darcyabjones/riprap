@@ -20,13 +20,26 @@ pub enum MyError {
         path: String,
     },
     #[fail(display = "Couldn't read file at path: {:?}", path)]
-    CantReadFileError {
+    FastaReadFileError {
         path: path::PathBuf,
         #[cause] io_error: io::Error,
     },
+    #[fail(display = "Error with Fasta: {}", desc)]
+    FastaError {
+        desc: String
+    },
     #[fail(display = "Couldn't read file at path: {:?}", path)]
-    BCFError {
+    BCFPathError {
         path: path::PathBuf,
         #[cause] bcf_error: bcf::BCFPathError,
+    },
+    #[fail(display = "Error Processing VCF: {}", desc)]
+    BCFError {
+        desc: String
+    },
+    #[fail(display = "Error Processing VCF: {}", desc)]
+    BCFReadError {
+        desc: String,
+        #[cause] bcf_error: bcf::ReadError,
     },
 }
