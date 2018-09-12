@@ -42,4 +42,10 @@ pub enum MyError {
         desc: String,
         #[cause] bcf_error: bcf::ReadError,
     },
+    #[fail(display = "Error Processing VCF: {}", desc)]
+    BCFFormatReadError {
+        desc: String,
+        #[cause] bcf_error: bcf::record::FormatReadError,
+    },
+
 }

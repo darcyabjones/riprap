@@ -57,6 +57,7 @@ pub mod runner {
         let g: u8 = b'G';
         let c: u8 = b'C';
 
+
         let freader = fasta::Reader::from_file(fasta).map_err(|e| {
             MyError::FastaReadFileError { path: fasta.to_path_buf(), io_error: e}
         })?;
@@ -79,9 +80,25 @@ pub mod runner {
                 }
             })?;
 
-            let alleles = this.alleles().iter().map(|x| x[0]).collect::<Vec<u8>>();
-            let this_base = alleles[0];
-            let alt_alleles = &alleles[1..];
+
+            let alleles = this.alleles().to_owned();
+
+            let ref_allele = &alleles[0];
+            if ref_allele.len() > 1 {
+                continue
+            }
+
+            let this_base = ref_allele[0] as u8;
+
+            let alt_alleles = &alleles[1..]
+                .iter()
+                .filter(|x| x.len() == 1)
+                .map(|x| x[0])
+                .collect::<Vec<u8>>();
+
+            if alt_alleles.len() == 0 {
+                continue
+            }
 
             let c_to_t = this_base == c && alt_alleles.contains(&t);
             let t_to_c = this_base == t && alt_alleles.contains(&c);
@@ -97,7 +114,7 @@ pub mod runner {
             if !( c_to_t || t_to_c || a_to_g || g_to_a ) {
                 continue
             }
-            
+
             let chrom = snp::get_chrom_name(this.rid(), &hv)?;
             let seq = snp::get_chrom(chrom, &genome)?;
 
@@ -107,7 +124,7 @@ pub mod runner {
             } else {
                 this_pos - 1
             };
-            
+
             let next_base = match seq.get(next_pos) {
                 Some(x) => *x,
                 None => {
@@ -116,37 +133,31 @@ pub mod runner {
                 }
             };
 
+            let mut strand: i8 = 0;
+            let mut isrip = false;
+
             if ( c_to_t || t_to_c ) && next_base == a {
-                println!(
-                    "{}\t{}\t1\t{}\t{}\t{}",
-                    chrom,
-                    this_pos,
-                    String::from_utf8_lossy(&[this_base]),
-                    String::from_utf8_lossy(&[next_base]), 
-                    String::from_utf8_lossy(&alt_alleles));
+                strand = 1;
+                isrip = true;
             } else if ( g_to_a || a_to_g ) && next_base == t {
-                println!(
-                    "{}\t{}\t-1\t{}\t{}\t{}",
-                    chrom,
-                    this_pos,
-                    String::from_utf8_lossy(&[this_base]),
-                    String::from_utf8_lossy(&[next_base]),
-                    String::from_utf8_lossy(&alt_alleles));
+                strand = -1;
+                isrip = true;
             } else {
-                //println!("Probably not rip {} {} : alt {:?}", this_base, next_base, alt_alleles);
+                isrip = false;
             }
-            //println!("{:?}", next_base == a);
-            //println!("{:?}", next_base == t);
-            //println!("{:?}", next_base == c);
-            //println!("{:?}", next_base == g);
-            //println!("{:?}", this_base);
-            //println!("{:?}", alt_alleles);
 
-            //println!("next {:?}", next_base);
+            //let mut genotypes = &this.genotypes().clone().map_err(|err| {
+            //    MyError::BCFFormatReadError {
+            //        desc: String::from("Genotype fields were malformed"),
+            //        bcf_error: err,
+            //    }
+            //})?.to_owned();
 
-            //println!("{:?}", c == this_base);
-            //println!("{:?}", c == &[prev_base.unwrap()]);
-            //break;
+            //let g = snp::get_genotypes(&mut genotypes, 144);
+            //println!("{:?}", g);
+
+            snp::print_bed(chrom, this_pos, strand, [this_base, next_base], isrip);
+
         }
 
         //let samples = snp::get_samples(&breader)

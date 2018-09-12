@@ -9,6 +9,7 @@ use bio::io::fasta;
 use rust_htslib::bcf;
 use rust_htslib::bcf::Read;
 use rust_htslib::bcf::header::HeaderView;
+use rust_htslib::bcf::record::GenotypeAllele;
 //use rust_htslib::bcf::Record;
 
 
@@ -47,6 +48,19 @@ pub fn get_chrom_name(rid: Option<u32>, hv: &HeaderView) -> Result<&str, MyError
     chrom_str
 }
 
+pub fn get_genotypes(genotypes: &mut bcf::record::Genotypes, n: u32) -> Vec<Vec<usize>> {
+    let mut output: Vec<Vec<usize>> = Vec::new();
+    for i in 0..n {
+        let i2 = i as usize;
+        let geno = genotypes.get(i as usize).as_slice().iter()
+            .map(|a| a.index())
+            .flat_map(|e| e)
+            .map(|e| e as usize)
+            .collect();
+        output.push(geno);
+    }
+    output
+}
 
 pub fn get_chrom<'a>(chrom: &str, genome: &'a HashMap<String, fasta::Record>) -> Result<&'a [u8], MyError> {
     genome.get(chrom)
@@ -56,6 +70,14 @@ pub fn get_chrom<'a>(chrom: &str, genome: &'a HashMap<String, fasta::Record>) ->
         .map(|c| c.seq())
 }
 
-//pub fn get_base<'a>(seq: &'a [u8], index: usize) -> Option<&'a [u8]> {
-//    let base = 
-//}
+
+pub fn print_bed(chrom: &str, pos: usize, strand: i8, ref_allele: [u8; 2], isrip: bool) {
+    print!("{}\t", chrom);
+    print!("{}\t", pos);
+    print!("{}\t", pos + 1);
+    print!("{}\t", strand);
+    print!("{}\t", String::from_utf8_lossy(&ref_allele));
+    print!("{}", isrip as u8);
+
+    print!("\n");
+}
