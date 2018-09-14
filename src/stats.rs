@@ -2,6 +2,7 @@ use bio::io::fasta;
 
 use freqs::Frequencies;
 
+
 /// Calculate the GC% of a sequence.
 ///
 /// Examples:
@@ -21,6 +22,7 @@ pub fn gc_content(seq: &[u8]) -> f64 {
 
     gc / len
 }
+
 
 /// Calculate the composite RIP index (CRI) of a sequence.
 ///

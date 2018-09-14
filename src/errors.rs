@@ -11,6 +11,8 @@ pub type UnitResult<Er> = Result<(), Er>;
 
 #[derive(Debug, Fail)]
 pub enum MyError {
+    #[fail(display = "Required input not provided. If you encounter this error, please submit a bug report.")]
+    RequiredInputMissing,
     #[fail(display = "Couldn't parse as integer: {}", integer)]
     ParseIntError {
         integer: String,
