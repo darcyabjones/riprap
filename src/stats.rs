@@ -1,6 +1,7 @@
 use bio::io::fasta;
+use std::hash::Hash;
 
-use freqs::Frequencies;
+use freqs::Counter;
 
 
 /// Calculate the GC% of a sequence.
@@ -9,18 +10,23 @@ use freqs::Frequencies;
 ///
 /// ```rust
 /// use riprap::stats;
-/// let result = stats::gc_content(b"ATGC");
+/// let result = stats::base_content(b"ATGC", b"GC");
 /// assert_eq!(result, 0.5);
+///
+/// let result = stats::base_content(b"ATGC", b"TGC");
+/// assert_eq!(result, 0.75);
 /// ```
-pub fn gc_content(seq: &[u8]) -> f64 {
+pub fn base_content<T: Eq + Hash + Clone>(seq: &[T], bases: &[T]) -> f64 {
 
-    let mut freq = Frequencies::new(6);
-    freq.extend(seq);
+    let counter: Counter<T> = seq.iter().cloned().collect();
 
-    let gc = (freq.count(&&b'G') + freq.count(&&b'C')) as f64;
-    let len = seq.len() as f64;
+    let base_count = bases.iter()
+        .map(|x| counter.count(x))
+        .fold(0, |acc, x| acc + x);
 
-    gc / len
+    let len = seq.len();
+
+    (base_count as f64) / (len as f64)
 }
 
 
@@ -37,7 +43,7 @@ pub fn gc_content(seq: &[u8]) -> f64 {
 pub fn cri(seq: &[u8]) -> f64 {
     let dinucs = seq.windows(2).map(|x| [x[0], x[1]]);
 
-    let mut di_freq = Frequencies::new(25);
+    let mut di_freq = Counter::new(25);
     di_freq.extend(dinucs);
 
     let ta = di_freq.count(b"TA") as f64;
