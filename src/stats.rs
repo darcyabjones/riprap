@@ -17,18 +17,9 @@ use freqs::Counter;
 /// assert_eq!(result, 0.75);
 /// ```
 pub fn base_content<T: Eq + Hash + Clone>(seq: &[T], bases: &[T]) -> f64 {
-
     let counter: Counter<T> = seq.iter().cloned().collect();
-
-    let base_count = bases.iter()
-        .map(|x| counter.count(x))
-        .fold(0, |acc, x| acc + x);
-
-    let len = seq.len();
-
-    (base_count as f64) / (len as f64)
+    counter.prop_sum(bases)
 }
-
 
 /// Calculate the composite RIP index (CRI) of a sequence.
 ///
@@ -41,19 +32,19 @@ pub fn base_content<T: Eq + Hash + Clone>(seq: &[T], bases: &[T]) -> f64 {
 /// assert_eq!(result, 0.0);
 /// ```
 pub fn cri(seq: &[u8]) -> f64 {
-    let dinucs = seq.windows(2).map(|x| [x[0], x[1]]);
+    let freq: Counter<[u8; 2]> = seq
+        .windows(2)
+        .map(|x| [x[0], x[1]])
+        .collect();
 
-    let mut di_freq = Counter::new(25);
-    di_freq.extend(dinucs);
+    let ta = freq.count(b"TA") as f64;
+    let at = freq.count(b"AT") as f64;
 
-    let ta = di_freq.count(b"TA") as f64;
-    let at = di_freq.count(b"AT") as f64;
+    let ca = freq.count(b"CA") as f64;
+    let ac = freq.count(b"AC") as f64;
 
-    let ca = di_freq.count(b"CA") as f64;
-    let ac = di_freq.count(b"AC") as f64;
-
-    let gt = di_freq.count(b"GT") as f64;
-    let tg = di_freq.count(b"TG") as f64;
+    let gt = freq.count(b"GT") as f64;
+    let tg = freq.count(b"TG") as f64;
 
     let num = ca + tg;
     let denom = ac + gt;
@@ -95,4 +86,4 @@ pub fn run_sliding_windows<F: Fn(&[u8]) -> f64>(record: &fasta::Record, size: us
         output.push((record.id(), i, i + size, j));
     }
     output
-} 
+}

@@ -15,6 +15,7 @@ use std::default::Default;
 #[derive(Clone)]
 pub struct Counter<T> {
     data: HashMap<T, u64>,
+    size: u64
 }
 
 impl<T: fmt::Debug + Eq + Hash> fmt::Debug for Counter<T> {
@@ -24,6 +25,7 @@ impl<T: fmt::Debug + Eq + Hash> fmt::Debug for Counter<T> {
 }
 
 impl<T: Eq + Hash> Counter<T> {
+
     /// Create a new frequency table with no samples and capacity `cap`.
     ///
     /// # Examples
@@ -38,7 +40,7 @@ impl<T: Eq + Hash> Counter<T> {
     /// assert_eq!(counter.count(&'a'), 2);
     /// ```
     pub fn new(cap: usize) -> Self {
-        Counter { data: HashMap::with_capacity(cap) }
+        Counter { data: HashMap::with_capacity(cap), size: 0 }
     }
 
     /// Add a sample to the frequency table.
@@ -52,8 +54,9 @@ impl<T: Eq + Hash> Counter<T> {
     ///
     /// counter.add('a');
     /// ```
-    pub fn add(&mut self, v: T) {
-        match self.data.entry(v) {
+    pub fn add(&mut self, element: T) {
+        self.size += 1;
+        match self.data.entry(element) {
             Entry::Vacant(count) => { count.insert(1); },
             Entry::Occupied(mut count) => { *count.get_mut() += 1; },
         }
@@ -92,7 +95,7 @@ impl<T: Eq + Hash> Counter<T> {
     /// assert_eq!(counter.size(), 3);
     /// ```
     pub fn size(&self) -> usize {
-        self.data.values().fold(0, |acc, x| acc + x) as usize
+        self.size as usize
     }
 
     /// Return the number of occurrences of `v` in the data.
@@ -122,8 +125,12 @@ impl<T: Eq + Hash> Counter<T> {
     ///
     /// let count = counter.count_sum(b"gc");
     /// assert_eq!(count, 2);
+    ///
+    /// let count = counter.count_sum(&[b'g', b'c']);
+    /// assert_eq!(count, 2);
     /// ```
     pub fn count_sum(&self, elements: &[T]) -> u64 {
+        // For some reason `sum` won't work here, so using explicit fold.
         elements.iter()
             .map(|e| self.count(e))
             .fold(0, |acc, x| acc + x)
@@ -153,6 +160,7 @@ impl<T: Eq + Hash> Counter<T> {
         let count = self.count(element);
         (count as f64) / (size as f64)
     }
+
 
     /// Return the sum of proportions of a list of elements in the data.
     ///

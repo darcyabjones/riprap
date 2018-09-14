@@ -4,6 +4,7 @@
 
 use stats;
 use snp;
+use freqs::Counter;
 use errors::{UnitResult, MyError};
 use std::path::PathBuf;
 use std::str;
