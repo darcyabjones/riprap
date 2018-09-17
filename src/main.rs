@@ -1,10 +1,10 @@
-extern crate riprap;
 extern crate clap;
+extern crate riprap;
 
 mod cli;
 use cli::Config;
-use cli::WindowConfig;
 use cli::SNPConfig;
+use cli::WindowConfig;
 
 use riprap::runner;
 

@@ -2,18 +2,16 @@
 //!
 //! `runner` is module containing high-level pipeline functions
 
-use stats;
-use snp;
-use errors::{UnitResult, MyError};
-use std::path::PathBuf;
-use std::str;
 use bio::io::fasta;
+use errors::{MyError, UnitResult};
 use rust_htslib::bcf;
 use rust_htslib::bcf::Read;
+use snp;
+use stats;
+use std::path::PathBuf;
+use std::str;
 
-
-pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError>{
-
+pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
     let reader = fasta::Reader::from_file(path).unwrap();
 
     for record in reader.records() {
@@ -27,7 +25,6 @@ pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError>{
 }
 
 pub fn run_cri(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
-
     let reader = fasta::Reader::from_file(path).unwrap();
 
     for record in reader.records() {
@@ -41,20 +38,20 @@ pub fn run_cri(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> 
 }
 
 pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
-
     // Get the bases first because it's easier to coerce into byte slices.
     let a: u8 = b'A';
     let t: u8 = b'T';
     let g: u8 = b'G';
     let c: u8 = b'C';
 
-
-    let freader = fasta::Reader::from_file(fasta).map_err(|e| {
-        MyError::FastaReadFileError { path: fasta.to_path_buf(), io_error: e}
+    let freader = fasta::Reader::from_file(fasta).map_err(|e| MyError::FastaReadFileError {
+        path: fasta.to_path_buf(),
+        io_error: e,
     })?;
 
-    let mut breader = bcf::Reader::from_path(vcf).map_err(|e| {
-        MyError::BCFPathError { path: vcf.to_path_buf(), bcf_error: e }
+    let mut breader = bcf::Reader::from_path(vcf).map_err(|e| MyError::BCFPathError {
+        path: vcf.to_path_buf(),
+        bcf_error: e,
     })?;
 
     // Must convert to owned because opened the reader mutably.
@@ -64,19 +61,16 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
     let genome = snp::fasta_to_dict(freader);
 
     for record in breader.records() {
-        let mut this = record.map_err(|err| {
-            MyError::BCFReadError {
-                desc: String::from("Error reading vcf record"),
-                bcf_error: err,
-            }
+        let mut this = record.map_err(|err| MyError::BCFReadError {
+            desc: String::from("Error reading vcf record"),
+            bcf_error: err,
         })?;
-
 
         let alleles = this.alleles().to_owned();
 
         let ref_allele = &alleles[0];
         if ref_allele.len() > 1 {
-            continue
+            continue;
         }
 
         let this_base = ref_allele[0] as u8;
@@ -88,7 +82,7 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
             .collect::<Vec<u8>>();
 
         if alt_alleles.len() == 0 {
-            continue
+            continue;
         }
 
         let c_to_t = this_base == c && alt_alleles.contains(&t);
@@ -96,14 +90,13 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
         let a_to_g = this_base == a && alt_alleles.contains(&g);
         let g_to_a = this_base == g && alt_alleles.contains(&a);
 
-
         //println!("{}", c_to_t);
         //println!("{}", t_to_c);
         //println!("{}", g_to_a);
         //println!("{}", a_to_g);
 
-        if !( c_to_t || t_to_c || a_to_g || g_to_a ) {
-            continue
+        if !(c_to_t || t_to_c || a_to_g || g_to_a) {
+            continue;
         }
 
         let chrom = snp::get_chrom_name(this.rid(), &hv)?;
@@ -127,10 +120,10 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
         let mut strand: i8 = 0;
         let mut isrip = false;
 
-        if ( c_to_t || t_to_c ) && next_base == a {
+        if (c_to_t || t_to_c) && next_base == a {
             strand = 1;
             isrip = true;
-        } else if ( g_to_a || a_to_g ) && next_base == t {
+        } else if (g_to_a || a_to_g) && next_base == t {
             strand = -1;
             isrip = true;
         } else {
@@ -148,7 +141,6 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
         //println!("{:?}", g);
 
         snp::print_bed(chrom, this_pos, strand, [this_base, next_base], isrip);
-
     }
 
     //let samples = snp::get_samples(&breader)

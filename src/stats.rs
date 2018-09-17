@@ -1,8 +1,8 @@
 use bio::io::fasta;
 use std::hash::Hash;
+use windowrs::Windows;
 
 use countrs::Counter;
-
 
 /// Calculate the GC% of a sequence.
 ///
@@ -32,10 +32,7 @@ pub fn base_content<T: Eq + Hash + Clone>(seq: &[T], bases: &[T]) -> f64 {
 /// assert_eq!(result, 0.0);
 /// ```
 pub fn cri(seq: &[u8]) -> f64 {
-    let freq: Counter<[u8; 2]> = seq
-        .windows(2)
-        .map(|x| [x[0], x[1]])
-        .collect();
+    let freq: Counter<[u8; 2]> = seq.windows(2).map(|x| [x[0], x[1]]).collect();
 
     let ta = freq.count(b"TA") as f64;
     let at = freq.count(b"AT") as f64;
@@ -48,16 +45,11 @@ pub fn cri(seq: &[u8]) -> f64 {
 
     let num = ca + tg;
     let denom = ac + gt;
-    let ratio = if denom == 0.0 {
-        0.0
-    } else {
-        num / denom
-    };
+    let ratio = if denom == 0.0 { 0.0 } else { num / denom };
 
     let offset = ta / at;
     offset - ratio
 }
-
 
 /// Apply a function along a sequence in windows.
 ///
@@ -73,12 +65,22 @@ pub fn cri(seq: &[u8]) -> f64 {
 ///
 /// let result = stats::sliding_windows(&[1, 2, 3, 4], 2, 1, |x| 1.0);
 /// assert_eq!(result, vec![1.0, 1.0, 1.0]);
-pub fn sliding_windows<F: Fn(&[u8]) -> f64>(seq: &[u8], size: usize, step: usize, f: F) -> Vec<f64> {
-    seq.windows(size).step_by(step).map(f).collect()
+/// ```
+pub fn sliding_windows<F: Fn(&[u8]) -> f64>(
+    seq: &[u8],
+    size: usize,
+    step: usize,
+    f: F,
+) -> Vec<f64> {
+    Windows::new(seq, size, step).map(f).collect()
 }
 
-
-pub fn run_sliding_windows<F: Fn(&[u8]) -> f64>(record: &fasta::Record, size: usize, step: usize, f: F) -> Vec<(&str, usize, usize, f64)> {
+pub fn run_sliding_windows<F: Fn(&[u8]) -> f64>(
+    record: &fasta::Record,
+    size: usize,
+    step: usize,
+    f: F,
+) -> Vec<(&str, usize, usize, f64)> {
     let frac = sliding_windows(&record.seq(), size, step, f);
 
     let mut output = Vec::new();
