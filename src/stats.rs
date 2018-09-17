@@ -1,7 +1,7 @@
 use bio::io::fasta;
 use std::hash::Hash;
 
-use freqs::Counter;
+use countrs::Counter;
 
 
 /// Calculate the GC% of a sequence.

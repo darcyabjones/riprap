@@ -8,3 +8,5 @@ clap = "2.32.0"
 rust-htslib = "0.21.0"
 bio = "0.21.0"
 failure = "0.1.2"
+countrs = { git = "https://github.com/darcyabjones/countrs", branch = "master" }
+windowrs = { git = "https://github.com/darcyabjones/windowrs", branch = "master" }
