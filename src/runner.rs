@@ -16,7 +16,7 @@ pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
 
     for record in reader.records() {
         let rec = record.unwrap();
-        let frac = stats::run_sliding_windows(&rec, size, step, |x| stats::base_content(x, b"GC"));
+        let frac = stats::sliding_windows(&rec, size, step, |x| stats::base_content(x, b"GC"));
         for (seqid, start, end, score) in frac {
             println!("{}\t{}\t{}\t{}", seqid, start, end, score);
         }
@@ -29,7 +29,7 @@ pub fn run_cri(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> 
 
     for record in reader.records() {
         let rec = record.unwrap();
-        let frac = stats::run_sliding_windows(&rec, size, step, stats::cri);
+        let frac = stats::sliding_windows(&rec, size, step, stats::cri);
         for (seqid, start, end, score) in frac {
             println!("{}\t{}\t{}\t{}", seqid, start, end, score);
         }

@@ -1,5 +1,7 @@
 # riprap
 
+[![Build Status](https://travis-ci.org/darcyabjones/riprap.svg?branch=master)](https://travis-ci.org/darcyabjones/riprap)
+
 Tools for detecting and quantifying RIP-like signatures in genomes.
 riprap is a young project and it might stay half baked for a while, but eventually I hope to update and extend ripcal.
 

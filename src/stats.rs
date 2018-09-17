@@ -61,31 +61,40 @@ pub fn cri(seq: &[u8]) -> f64 {
 /// Examples:
 ///
 /// ```rust
-/// use riprap::stats;
+/// extern crate bio;
+/// extern crate riprap;
 ///
-/// let result = stats::sliding_windows(&[1, 2, 3, 4], 2, 1, |x| 1.0);
-/// assert_eq!(result, vec![1.0, 1.0, 1.0]);
+/// use riprap::stats;
+/// use bio::io::fasta::Record;
+///
+/// let rec = Record::with_attrs(
+///     "test_id",
+///     None,
+///     b"ATGC"
+/// );
+///
+/// let result = stats::sliding_windows(&rec, 2, 1, |_| 1.0);
+/// assert_eq!(result, vec![
+///     ("test_id", 0, 2, 1.0),
+///     ("test_id", 1, 3, 1.0),
+///     ("test_id", 2, 4, 1.0)
+/// ]);
 /// ```
 pub fn sliding_windows<F: Fn(&[u8]) -> f64>(
-    seq: &[u8],
-    size: usize,
-    step: usize,
-    f: F,
-) -> Vec<f64> {
-    Windows::new(seq, size, step).map(f).collect()
-}
-
-pub fn run_sliding_windows<F: Fn(&[u8]) -> f64>(
     record: &fasta::Record,
     size: usize,
     step: usize,
     f: F,
 ) -> Vec<(&str, usize, usize, f64)> {
-    let frac = sliding_windows(&record.seq(), size, step, f);
+    let seq = record.seq();
 
-    let mut output = Vec::new();
-    for (i, j) in (0..).step_by(step).zip(frac) {
-        output.push((record.id(), i, i + size, j));
-    }
-    output
+    let wins = Windows::new(seq, size, step).map(f);
+    let tups = (0..)
+        .step_by(step)
+        .zip(wins)
+        .map(|(i, score)| (record.id(), i, i + size, score))
+        .collect();
+
+    tups
 }
+
