@@ -65,9 +65,9 @@ pub fn cri(seq: &[u8]) -> f64 {
 /// extern crate riprap;
 ///
 /// use riprap::stats;
-/// use bio::io::fasta::Record;
+/// use bio::io::fasta;
 ///
-/// let rec = Record::with_attrs(
+/// let rec = fasta::Record::with_attrs(
 ///     "test_id",
 ///     None,
 ///     b"ATGC"
