@@ -51,6 +51,21 @@ pub fn cri(seq: &[u8]) -> f64 {
     offset - ratio
 }
 
+#[derive(Debug, PartialEq)]
+pub struct BGBlock {
+    pub seqid: String,
+    pub start: usize,
+    pub end: usize,
+    pub score: f64,
+}
+
+impl BGBlock {
+    pub fn new(seqid: &str, start: usize, end: usize, score: f64) -> Self {
+        BGBlock { seqid: seqid.to_string(), start: start, end: end, score: score}
+    }
+}
+
+
 /// Apply a function along a sequence in windows.
 ///
 /// The implementation isn't perfect.
@@ -65,6 +80,7 @@ pub fn cri(seq: &[u8]) -> f64 {
 /// extern crate riprap;
 ///
 /// use riprap::stats;
+/// use riprap::stats::BGBlock;
 /// use bio::io::fasta;
 ///
 /// let rec = fasta::Record::with_attrs(
@@ -75,26 +91,26 @@ pub fn cri(seq: &[u8]) -> f64 {
 ///
 /// let result = stats::sliding_windows(&rec, 2, 1, |_| 1.0);
 /// assert_eq!(result, vec![
-///     ("test_id", 0, 2, 1.0),
-///     ("test_id", 1, 3, 1.0),
-///     ("test_id", 2, 4, 1.0)
+///     BGBlock::new("test_id", 0, 2, 1.0),
+///     BGBlock::new("test_id", 1, 3, 1.0),
+///     BGBlock::new("test_id", 2, 4, 1.0)
 /// ]);
 /// ```
-pub fn sliding_windows<F: Fn(&[u8]) -> f64>(
+pub fn sliding_windows<F>(
     record: &fasta::Record,
     size: usize,
     step: usize,
     f: F,
-) -> Vec<(&str, usize, usize, f64)> {
+) -> Vec<BGBlock>
+    where F: Fn(&[u8]) -> f64
+{
     let seq = record.seq();
+    let id = record.id();
 
     let wins = Windows::new(seq, size, step).map(f);
-    let tups = (0..)
-        .step_by(step)
+    (0..).step_by(step)
         .zip(wins)
-        .map(|(i, score)| (record.id(), i, i + size, score))
-        .collect();
-
-    tups
+        .map(|(i, score)| BGBlock::new(id, i, i + size, score))
+        .collect()
 }
 

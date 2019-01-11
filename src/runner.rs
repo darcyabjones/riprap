@@ -16,9 +16,21 @@ pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
 
     for record in reader.records() {
         let rec = record.unwrap();
-        let frac = stats::sliding_windows(&rec, size, step, |x| stats::base_content(x, b"GC"));
-        for (seqid, start, end, score) in frac {
-            println!("{}\t{}\t{}\t{}", seqid, start, end, score);
+        let frac = stats::sliding_windows(
+            &rec,
+            size,
+            step,
+            |x| stats::base_content(x, b"GC")
+        );
+
+        for rec in frac {
+            println!(
+                "{}\t{}\t{}\t{}",
+                rec.seqid,
+                rec.start,
+                rec.end,
+                rec.score
+            );
         }
     }
     Ok(())
@@ -30,8 +42,14 @@ pub fn run_cri(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> 
     for record in reader.records() {
         let rec = record.unwrap();
         let frac = stats::sliding_windows(&rec, size, step, stats::cri);
-        for (seqid, start, end, score) in frac {
-            println!("{}\t{}\t{}\t{}", seqid, start, end, score);
+        for rec in frac {
+            println!(
+                "{}\t{}\t{}\t{}",
+                rec.seqid,
+                rec.start,
+                rec.end,
+                rec.score
+            );
         }
     }
     Ok(())
@@ -44,20 +62,23 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
     let g: u8 = b'G';
     let c: u8 = b'C';
 
-    let freader = fasta::Reader::from_file(fasta).map_err(|e| MyError::FastaReadFileError {
-        path: fasta.to_path_buf(),
-        io_error: e,
-    })?;
+    let freader = fasta::Reader::from_file(fasta)
+        .map_err(|e| MyError::FastaReadFileError {
+            path: fasta.to_path_buf(),
+            io_error: e,
+        }
+    )?;
 
-    let mut breader = bcf::Reader::from_path(vcf).map_err(|e| MyError::BCFPathError {
-        path: vcf.to_path_buf(),
-        bcf_error: e,
-    })?;
+    let mut breader = bcf::Reader::from_path(vcf)
+        .map_err(|e| MyError::BCFPathError {
+            path: vcf.to_path_buf(),
+            bcf_error: e,
+        }
+    )?;
 
     // Must convert to owned because opened the reader mutably.
     // hv = HeaderView
     let hv = breader.header().to_owned();
-
     let genome = snp::fasta_to_dict(freader);
 
     for record in breader.records() {
@@ -74,7 +95,6 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
         }
 
         let this_base = ref_allele[0] as u8;
-
         let alt_alleles = &alleles[1..]
             .iter()
             .filter(|x| x.len() == 1)

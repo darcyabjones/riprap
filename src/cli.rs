@@ -10,6 +10,10 @@ use std::path::PathBuf;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 
+// Type alias to reduce typing.
+type CliApp = App<'static, 'static>;
+
+
 /// Parse a string as integer raising an error if invalid or None.
 fn parse_usize(i: Option<&str>) -> Result<usize, MyError> {
     let j = i.ok_or_else(|| MyError::RequiredInputMissing)?;
@@ -59,7 +63,7 @@ fn is_file(path: String) -> Result<(), String> {
 }
 
 /// Arguments for the main riprap cli.
-pub fn build_cli() -> App<'static, 'static> {
+pub fn build_cli() -> CliApp {
     App::new("riprap")
         .version("0.1")
         .author("Darcy Jones <darcy.ab.jones@gmail.com>")
@@ -71,12 +75,13 @@ pub fn build_cli() -> App<'static, 'static> {
 
 /// Arguments for the sliding window family of subcommands.
 /// This allows us to use the same config for GC and CRI windows.
-pub fn cli_sub_sliding(name: &'static str, about: &'static str) -> App<'static, 'static> {
+pub fn cli_sub_sliding(name: &'static str, about: &'static str) -> CliApp {
     SubCommand::with_name(name)
         .about(about)
         .arg(
             Arg::with_name("fasta")
-                .help("The reference fasta to calculate windows over. Use '-' for stdin.")
+                .help("The reference fasta to calculate windows over. \
+                       Use '-' for stdin.")
                 .index(1)
                 .required(true)
                 .validator(is_file),
@@ -102,21 +107,25 @@ pub fn cli_sub_sliding(name: &'static str, about: &'static str) -> App<'static, 
 }
 
 /// Arguments for the SNP subcommand
-pub fn cli_sub_snp() -> App<'static, 'static> {
+pub fn cli_sub_snp() -> CliApp {
     SubCommand::with_name("snp")
         .about("Find snps that are RIP-like")
-        .arg(Arg::with_name("infasta")
+        .arg(
+            Arg::with_name("infasta")
              .help("The reference fasta. Use '-' for stdin.")
              .required(true)
              .validator(is_file))
-        .arg(Arg::with_name("invcf")
-             .help("The genotyped vcf. GZIPped files will be automatically unzipped. Use '-' for stdin.")
+        .arg(
+            Arg::with_name("invcf")
+             .help("The genotyped vcf. GZIPped files will be automatically \
+                    unzipped. Use '-' for stdin.")
              .required(true)
-             .validator(is_file))
+             .validator(is_file)
+        )
 }
 
 /// Get the actual provided arguments given the cli and argv.
-pub fn eval_cli(app: App<'static, 'static>, args: env::ArgsOs) -> ArgMatches<'static> {
+pub fn eval_cli(app: CliApp, args: env::ArgsOs) -> ArgMatches<'static> {
     app.get_matches_from(args)
 }
 

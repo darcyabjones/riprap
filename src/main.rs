@@ -17,13 +17,16 @@ fn main() {
 
     let result = match matches.subcommand() {
         ("gc", Some(m)) => {
-            WindowConfig::parse_clap(m).and_then(|c| runner::run_gc(&c.fasta, c.window, c.step))
+            WindowConfig::parse_clap(m)
+                .and_then(|c| runner::run_gc(&c.fasta, c.window, c.step))
             },
         ("cri", Some(m)) => {
-            WindowConfig::parse_clap(m).and_then(|c| runner::run_cri(&c.fasta, c.window, c.step))
+            WindowConfig::parse_clap(m)
+                .and_then(|c| runner::run_cri(&c.fasta, c.window, c.step))
             },
         ("snp", Some(m)) => {
-            SNPConfig::parse_clap(m).and_then(|c| runner::run_ripsnp(&c.fasta, &c.vcf))
+            SNPConfig::parse_clap(m)
+                .and_then(|c| runner::run_ripsnp(&c.fasta, &c.vcf))
             },
         ("", None) => {
             println!("no subcommand");
