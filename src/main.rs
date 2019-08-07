@@ -1,12 +1,15 @@
-extern crate clap;
-extern crate riprap;
+#[macro_use]
+extern crate failure;
 
+mod errors;
+mod runner;
+mod snp;
+mod stats;
 mod cli;
+
 use cli::Config;
 use cli::SNPConfig;
 use cli::WindowConfig;
-
-use riprap::runner;
 
 use std::env;
 use std::process;
@@ -17,20 +20,14 @@ fn main() {
 
     let result = match matches.subcommand() {
         ("gc", Some(m)) => {
-            WindowConfig::parse_clap(m)
-                .and_then(|c| runner::run_gc(&c.fasta, c.window, c.step))
-            },
+            WindowConfig::parse_clap(m).and_then(|c| {
+                runner::run_gc(&c.fasta, &c.outfile, c.window, c.step)
+            })
+        },
         ("cri", Some(m)) => {
-            WindowConfig::parse_clap(m)
-                .and_then(|c| runner::run_cri(&c.fasta, c.window, c.step))
-            },
-        ("snp", Some(m)) => {
-            SNPConfig::parse_clap(m)
-                .and_then(|c| runner::run_ripsnp(&c.fasta, &c.vcf))
-            },
-        ("", None) => {
-            println!("no subcommand");
-            Ok(())
+            WindowConfig::parse_clap(m).and_then(|c| {
+                runner::run_cri(&c.fasta, &c.outfile, c.window, c.step)
+            })
         },
         _ => unreachable!() // Ok(()),
     };
@@ -43,3 +40,15 @@ fn main() {
         }
     });
 }
+
+
+/*
+        ("snp", Some(m)) => {
+            SNPConfig::parse_clap(m)
+                .and_then(|c| runner::run_ripsnp(&c.fasta, &c.vcf))
+        },
+        ("", None) => {
+            println!("no subcommand");
+            Ok(())
+        },
+        */

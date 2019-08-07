@@ -1,6 +1,6 @@
 use bio::io::fasta;
 use std::hash::Hash;
-use windowrs::Windows;
+use windowrs::{Window, Windows};
 
 use countrs::Counter;
 
@@ -10,14 +10,18 @@ use countrs::Counter;
 ///
 /// ```rust
 /// use riprap::stats;
-/// let result = stats::base_content(b"ATGC", b"GC");
-/// assert_eq!(result, 0.5);
 ///
-/// let result = stats::base_content(b"ATGC", b"TGC");
-/// assert_eq!(result, 0.75);
+/// let result = stats::base_content(Window::new(1, 10, b"ATGC"), b"GC");
+/// assert_eq!(Window::new(1, 10, 0.5), result);
+///
+/// let result = stats::base_content(Window::new(1, 10, b"ATGC"), b"TGC");
+/// assert_eq!(Window::new(1, 10, 0.75), result);
 /// ```
 pub fn base_content<T: Eq + Hash + Clone>(seq: &[T], bases: &[T]) -> f64 {
-    let counter: Counter<T> = seq.iter().cloned().collect();
+    let counter: Counter<T> = seq
+        .iter()
+        .cloned()
+        .collect();
     counter.prop_sum(bases)
 }
 
@@ -65,6 +69,14 @@ impl BGBlock {
     }
 }
 
+impl std::fmt::Display for BGBlock {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}\t{}\t{}\t{}", self.seqid, self.start, self.end, self.score)
+    }
+
+}
+
 
 /// Apply a function along a sequence in windows.
 ///
@@ -96,7 +108,7 @@ impl BGBlock {
 ///     BGBlock::new("test_id", 2, 4, 1.0)
 /// ]);
 /// ```
-pub fn sliding_windows<F>(
+pub fn sliding_windows<'a, F>(
     record: &fasta::Record,
     size: usize,
     step: usize,
@@ -107,10 +119,8 @@ pub fn sliding_windows<F>(
     let seq = record.seq();
     let id = record.id();
 
-    let wins = Windows::new(seq, size, step).map(f);
-    (0..).step_by(step)
-        .zip(wins)
-        .map(|(i, score)| BGBlock::new(id, i, i + size, score))
+    Windows::new(seq, size, step)
+        .map(|win| BGBlock::new(id, win.start, win.end, f(win.value)) )
         .collect()
 }
 

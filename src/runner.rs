@@ -3,19 +3,28 @@
 //! `runner` is module containing high-level pipeline functions
 
 use bio::io::fasta;
-use errors::{MyError, UnitResult};
 use rust_htslib::bcf;
 use rust_htslib::bcf::Read;
-use snp;
-use stats;
+use std::io;
+use std::fs;
 use std::path::PathBuf;
 use std::str;
 
-pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
-    let reader = fasta::Reader::from_file(path).unwrap();
+use crate::errors::{MyError, UnitResult};
+use crate::snp;
+use crate::stats;
+
+pub fn run_gc(
+    path: &PathBuf,
+    outfile: &PathBuf,
+    size: usize,
+    step: usize,
+) -> UnitResult<MyError> {
+    let reader = fasta::Reader::from_file(path).map_err(|e|);
 
     for record in reader.records() {
         let rec = record.unwrap();
+        println!("{:?}", rec);
         let frac = stats::sliding_windows(
             &rec,
             size,
@@ -24,32 +33,25 @@ pub fn run_gc(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
         );
 
         for rec in frac {
-            println!(
-                "{}\t{}\t{}\t{}",
-                rec.seqid,
-                rec.start,
-                rec.end,
-                rec.score
-            );
+            println!("{}", rec);
         }
     }
     Ok(())
 }
 
-pub fn run_cri(path: &PathBuf, size: usize, step: usize) -> UnitResult<MyError> {
+pub fn run_cri(
+    path: &PathBuf,
+    outfile: &PathBuf,
+    size: usize,
+    step: usize
+) -> UnitResult<MyError> {
     let reader = fasta::Reader::from_file(path).unwrap();
 
     for record in reader.records() {
         let rec = record.unwrap();
         let frac = stats::sliding_windows(&rec, size, step, stats::cri);
         for rec in frac {
-            println!(
-                "{}\t{}\t{}\t{}",
-                rec.seqid,
-                rec.start,
-                rec.end,
-                rec.score
-            );
+            println!("{}", rec);
         }
     }
     Ok(())
@@ -109,11 +111,6 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
         let t_to_c = this_base == t && alt_alleles.contains(&c);
         let a_to_g = this_base == a && alt_alleles.contains(&g);
         let g_to_a = this_base == g && alt_alleles.contains(&a);
-
-        //println!("{}", c_to_t);
-        //println!("{}", t_to_c);
-        //println!("{}", g_to_a);
-        //println!("{}", a_to_g);
 
         if !(c_to_t || t_to_c || a_to_g || g_to_a) {
             continue;

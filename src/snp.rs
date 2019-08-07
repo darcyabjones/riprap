@@ -1,6 +1,6 @@
 //! Docstring!
 
-use errors::MyError;
+use crate::errors::MyError;
 
 use bio::io::fasta;
 use rust_htslib::bcf;
@@ -36,7 +36,7 @@ pub fn get_chrom_name(rid: Option<u32>, hv: &HeaderView) -> Result<&str, MyError
         desc: String::from("Missing rid encountered."),
     })?;
 
-    let chrom = hv.rid2name(rid);
+    let chrom = hv.rid2name(rid).unwrap();
 
     let chrom_str = str::from_utf8(chrom).map_err(|_| MyError::BCFError {
         desc: String::from("Header contains invalid Chrom name."),
