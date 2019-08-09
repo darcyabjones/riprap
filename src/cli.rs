@@ -3,25 +3,20 @@
 //! The `cli` module contains structs and trait implementations for
 //! parsing command line arguments.
 
-
+use clap::{App, Arg, ArgMatches, SubCommand};
 use std::env;
 use std::path::PathBuf;
-use clap::{App, Arg, ArgMatches, SubCommand};
 
-use failure::{ResultExt, Error};
-use crate::errors::RRErrorKind;
+use crate::errors::ErrorKind;
 
 // Type alias to reduce typing.
 type CliApp = App<'static, 'static>;
 
-
 /// Parse a string as integer raising an error if invalid or None.
-fn parse_usize(i: Option<&str>) -> Result<usize, Error> {
-    let j = i.ok_or_else(|| RRErrorKind::RequiredInputMissing)?;
+fn parse_usize(i: Option<&str>) -> Result<usize, ErrorKind> {
+    let j = i.ok_or_else(|| ErrorKind::RequiredInputMissing)?;
 
-    j.parse::<usize>().context(
-        RRErrorKind::ParseIntError { integer: j.to_string() }
-    )
+    j.parse::<usize>().map_err(|_| ErrorKind::ParseIntError(j.to_string()))
 }
 
 /// Helper function to check if can parse as int.
@@ -33,8 +28,8 @@ fn is_usize(i: String) -> Result<(), String> {
 }
 
 /// Parse a string as a file path, raising error if None, or doesn't exist.
-fn parse_file(path: Option<&str>) -> Result<PathBuf, Error> {
-    let spath = path.ok_or_else(|| RRErrorKind::RequiredInputMissing)?;
+fn parse_file(path: Option<&str>) -> Result<PathBuf, ErrorKind> {
+    let spath = path.ok_or_else(|| ErrorKind::RequiredInputMissing)?;
 
     // If stdin or stdout
     if spath == "-" {
@@ -46,7 +41,7 @@ fn parse_file(path: Option<&str>) -> Result<PathBuf, Error> {
     if pb.is_file() {
         Ok(pb)
     } else {
-        Err(RRErrorKind::PathNotExistError { path: spath.to_string() }.into())
+        Err(ErrorKind::PathNotExistError(spath.to_string()))
     }
 }
 
@@ -76,8 +71,10 @@ pub fn cli_sub_sliding(name: &'static str, about: &'static str) -> CliApp {
         .about(about)
         .arg(
             Arg::with_name("fasta")
-                .help("The reference fasta to calculate windows over. \
-                       Use '-' for stdin.")
+                .help(
+                    "The reference fasta to calculate windows over. \
+                     Use '-' for stdin.",
+                )
                 .index(1)
                 .required(true)
                 .validator(is_file),
@@ -117,15 +114,18 @@ pub fn cli_sub_snp() -> CliApp {
         .about("Find snps that are RIP-like")
         .arg(
             Arg::with_name("infasta")
-             .help("The reference fasta. Use '-' for stdin.")
-             .required(true)
-             .validator(is_file))
+                .help("The reference fasta. Use '-' for stdin.")
+                .required(true)
+                .validator(is_file),
+        )
         .arg(
             Arg::with_name("invcf")
-             .help("The genotyped vcf. GZIPped files will be automatically \
-                    unzipped. Use '-' for stdin.")
-             .required(true)
-             .validator(is_file)
+                .help(
+                    "The genotyped vcf. GZIPped files will be automatically \
+                     unzipped. Use '-' for stdin.",
+                )
+                .required(true)
+                .validator(is_file),
         )
 }
 
@@ -138,7 +138,7 @@ pub fn eval_cli(app: CliApp, args: env::ArgsOs) -> ArgMatches<'static> {
 /// We also give the opportunity for parsing to fail, so
 /// return a Result.
 pub trait Config {
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, Error>;
+    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, ErrorKind>;
 }
 
 /// The config struct for windowed CLI subcommands.
@@ -151,10 +151,9 @@ pub struct WindowConfig {
 }
 
 impl Config for WindowConfig {
-
     /// Parse provided argument matches to our structure.
     /// Raising errors if incorrect args provided.
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, Error> {
+    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, ErrorKind> {
         let fasta = parse_file(app.value_of("fasta"))?;
         let outfile = parse_file(app.value_of("outfile"))?;
         let window = parse_usize(app.value_of("window"))?;
@@ -177,10 +176,9 @@ pub struct SNPConfig {
 }
 
 impl Config for SNPConfig {
-
     /// Parse provided argument matches to our structure.
     /// Raising errors if incorrect args provided.
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, Error> {
+    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, ErrorKind> {
         let fasta = parse_file(app.value_of("infasta"))?;
         let vcf = parse_file(app.value_of("invcf"))?;
         let config = Self {

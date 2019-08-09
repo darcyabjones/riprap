@@ -3,28 +3,22 @@
 //! `runner` is module containing high-level pipeline functions
 
 use bio::io::fasta;
-use rust_htslib::bcf;
-use rust_htslib::bcf::Read;
-use std::io;
-use std::fs;
 use std::path::PathBuf;
-use std::str;
 
-use crate::errors::{MyError, UnitResult};
-use crate::snp;
+use crate::errors::UnitResult;
 use crate::stats;
+//use crate::snp;
 
 pub fn run_gc(
     path: &PathBuf,
     outfile: &PathBuf,
     size: usize,
-    step: usize,
-) -> UnitResult<MyError> {
-    let reader = fasta::Reader::from_file(path).map_err(|e|);
+    step: usize
+) -> UnitResult {
+    let reader = fasta::Reader::from_file(path).unwrap();
 
     for record in reader.records() {
         let rec = record.unwrap();
-        println!("{:?}", rec);
         let frac = stats::sliding_windows(
             &rec,
             size,
@@ -44,7 +38,7 @@ pub fn run_cri(
     outfile: &PathBuf,
     size: usize,
     step: usize
-) -> UnitResult<MyError> {
+) -> UnitResult {
     let reader = fasta::Reader::from_file(path).unwrap();
 
     for record in reader.records() {
@@ -57,7 +51,8 @@ pub fn run_cri(
     Ok(())
 }
 
-pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
+/*
+pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult {
     // Get the bases first because it's easier to coerce into byte slices.
     let a: u8 = b'A';
     let t: u8 = b'T';
@@ -65,18 +60,10 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
     let c: u8 = b'C';
 
     let freader = fasta::Reader::from_file(fasta)
-        .map_err(|e| MyError::FastaReadFileError {
-            path: fasta.to_path_buf(),
-            io_error: e,
-        }
-    )?;
+        .map_err(|e| e.context(RRErrorKind::FastaReadFileError { path: fasta.to_path_buf() })?;
 
     let mut breader = bcf::Reader::from_path(vcf)
-        .map_err(|e| MyError::BCFPathError {
-            path: vcf.to_path_buf(),
-            bcf_error: e,
-        }
-    )?;
+        .map_err(|e| e.context(RRErrorKind::BCFPathError { path: vcf.to_path_buf() } )?;
 
     // Must convert to owned because opened the reader mutably.
     // hv = HeaderView
@@ -84,10 +71,8 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
     let genome = snp::fasta_to_dict(freader);
 
     for record in breader.records() {
-        let mut this = record.map_err(|err| MyError::BCFReadError {
-            desc: String::from("Error reading vcf record"),
-            bcf_error: err,
-        })?;
+        let mut this = record
+            .map_err(|e| e.context(RRErrorKind::BCFReadError { desc: String::from("Error reading vcf record") })?;
 
         let alleles = this.alleles().to_owned();
 
@@ -165,3 +150,5 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult<MyError> {
 
     Ok(())
 }
+
+*/

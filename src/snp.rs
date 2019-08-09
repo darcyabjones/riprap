@@ -1,6 +1,5 @@
 //! Docstring!
 
-use crate::errors::MyError;
 
 use bio::io::fasta;
 use rust_htslib::bcf;
@@ -11,6 +10,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::str;
 //use rust_htslib::bcf::Record;
+
+use crate::errors::RRError;
 
 pub fn get_samples(reader: &bcf::Reader) -> Vec<&str> {
     reader

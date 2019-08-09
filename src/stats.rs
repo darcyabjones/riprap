@@ -1,8 +1,10 @@
 use bio::io::fasta;
 use std::hash::Hash;
-use windowrs::{Window, Windows};
 
 use countrs::Counter;
+use windowrs::Windows;
+
+use crate::bedgraph::BGBlock;
 
 /// Calculate the GC% of a sequence.
 ///
@@ -18,10 +20,7 @@ use countrs::Counter;
 /// assert_eq!(Window::new(1, 10, 0.75), result);
 /// ```
 pub fn base_content<T: Eq + Hash + Clone>(seq: &[T], bases: &[T]) -> f64 {
-    let counter: Counter<T> = seq
-        .iter()
-        .cloned()
-        .collect();
+    let counter: Counter<T> = seq.iter().cloned().collect();
     counter.prop_sum(bases)
 }
 
@@ -55,35 +54,7 @@ pub fn cri(seq: &[u8]) -> f64 {
     offset - ratio
 }
 
-#[derive(Debug, PartialEq)]
-pub struct BGBlock {
-    pub seqid: String,
-    pub start: usize,
-    pub end: usize,
-    pub score: f64,
-}
-
-impl BGBlock {
-    pub fn new(seqid: &str, start: usize, end: usize, score: f64) -> Self {
-        BGBlock { seqid: seqid.to_string(), start: start, end: end, score: score}
-    }
-}
-
-impl std::fmt::Display for BGBlock {
-
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}\t{}\t{}\t{}", self.seqid, self.start, self.end, self.score)
-    }
-
-}
-
-
 /// Apply a function along a sequence in windows.
-///
-/// The implementation isn't perfect.
-/// It won't handle cases where the last window isn't window size.
-/// It will omit the last window in that case.
-/// Probably calls for a custom trait/object.
 ///
 /// Examples:
 ///
@@ -91,9 +62,9 @@ impl std::fmt::Display for BGBlock {
 /// extern crate bio;
 /// extern crate riprap;
 ///
-/// use riprap::stats;
-/// use riprap::stats::BGBlock;
 /// use bio::io::fasta;
+/// use riprap::stats;
+/// use riprap::bedgraph::BGBlock;
 ///
 /// let rec = fasta::Record::with_attrs(
 ///     "test_id",
@@ -114,13 +85,13 @@ pub fn sliding_windows<'a, F>(
     step: usize,
     f: F,
 ) -> Vec<BGBlock>
-    where F: Fn(&[u8]) -> f64
+where
+    F: Fn(&[u8]) -> f64,
 {
     let seq = record.seq();
     let id = record.id();
 
     Windows::new(seq, size, step)
-        .map(|win| BGBlock::new(id, win.start, win.end, f(win.value)) )
+        .map(|win| BGBlock::new(id, win.start, win.end, f(win.value)))
         .collect()
 }
-
