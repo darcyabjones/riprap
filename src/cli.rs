@@ -3,188 +3,117 @@
 //! The `cli` module contains structs and trait implementations for
 //! parsing command line arguments.
 
-use clap::{App, Arg, ArgMatches, SubCommand};
-use std::env;
 use std::path::PathBuf;
 
-use crate::errors::ErrorKind;
+use structopt::StructOpt;
+use clap::crate_description;
+use snafu::Snafu;
 
-// Type alias to reduce typing.
-type CliApp = App<'static, 'static>;
 
-/// Parse a string as integer raising an error if invalid or None.
-fn parse_usize(i: Option<&str>) -> Result<usize, ErrorKind> {
-    let j = i.ok_or_else(|| ErrorKind::RequiredInputMissing)?;
-
-    j.parse::<usize>().map_err(|_| ErrorKind::ParseIntError(j.to_string()))
+/// Utility for displaying lists in error messages.
+fn vec_as_comma_delimited(v: &[String]) -> String {
+    v.join(", ")
 }
 
-/// Helper function to check if can parse as int.
-fn is_usize(i: String) -> Result<(), String> {
-    match parse_usize(Some(&i)) {
-        Ok(_) => Ok(()),
-        Err(_) => Err("Could not parse as integer".to_string()),
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = crate_description!())]
+pub(crate) struct Options {
+
+    /// Write progress to screen during runtime.
+    /// Specify multiple times to increase verbosity (i.e. debug level).
+    #[structopt(short, long, parse(from_occurrences))]
+    pub(crate) verbose: u8,
+
+    #[structopt(subcommand)]
+    pub(crate) cmd: SubCommand,
+
+}
+
+
+#[derive(Debug, StructOpt)]
+pub(crate) enum SubCommand {
+
+    /// Calculate base frequency statistics in a rolling window.
+    Window {
+        /// The fields to print in the output bedgraph.
+        #[structopt(short, long, default_value = "all")]
+        fields: Vec<WindowField>,
+        /// The size of the sliding window.
+        #[structopt(short = "w", long = "window-size", default_value = "5000")]
+        size: usize,
+        /// The step of the sliding window.
+        #[structopt(short = "s", long = "window-step", default_value = "1000")]
+        step: usize,
+        /// Where to write the output bedgraph. Use '-' for stdout.
+        #[structopt(short, long, parse(from_os_str), default_value = "-")]
+        output: PathBuf,
+        /// The input fasta file. Use '-' for stdin.
+        #[structopt(parse(from_os_str))]
+        input: PathBuf,
     }
 }
 
-/// Parse a string as a file path, raising error if None, or doesn't exist.
-fn parse_file(path: Option<&str>) -> Result<PathBuf, ErrorKind> {
-    let spath = path.ok_or_else(|| ErrorKind::RequiredInputMissing)?;
+/// Error kinds for CLI issues.
+#[derive(Debug, Snafu)]
+pub(crate) enum Error {
+    #[snafu(display(
+        "Received an invalid choice: {}. Valid choices are: {}",
+        bad_choice,
+        vec_as_comma_delimited(valid_choices)
+    ))]
+    ChoiceError { bad_choice: String, valid_choices: Vec<String> },
+}
 
-    // If stdin or stdout
-    if spath == "-" {
-        return Ok(PathBuf::from(spath));
+
+// Enum types for controlling options.
+
+/// Valid choices for the window subcommand fields option.
+/// Some options are short hand for multiple options.
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub(crate) enum WindowField {
+    PercGC,
+    CRI,
+    Margolin1,
+    Margolin2,
+    Di,
+    Tri,
+    DiNR,
+    TriNR,
+    All,
+}
+
+
+impl WindowField {
+
+    fn domain() -> Vec<String> {
+        vec!["gc".to_string(), "cri".to_string(), "all".to_string()]
     }
 
-    let pb = PathBuf::from(spath);
-
-    if pb.is_file() {
-        Ok(pb)
-    } else {
-        Err(ErrorKind::PathNotExistError(spath.to_string()))
+    fn expand(&self) -> Vec<> {
+        window::Field
     }
+
 }
 
-/// Helper function to check if file exists.
-fn is_file(path: String) -> Result<(), String> {
-    match parse_file(Some(&path)) {
-        Ok(_) => Ok(()),
-        Err(_) => Err("File does not exist or isn't regular file.".to_string()),
+
+
+impl std::str::FromStr for WindowField {
+
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Error> {
+        match s {
+            "gc" => Ok(WindowField::GC),
+            "cri" => Ok(WindowField::CRI),
+            "all" => Ok(WindowField::All),
+            m => Err(
+                Error::ChoiceError {
+                    bad_choice: m.to_string(),
+                    valid_choices: WindowField::domain()
+                }
+            ),
+        }
     }
-}
 
-/// Arguments for the main riprap cli.
-pub fn build_cli() -> CliApp {
-    App::new("riprap")
-        .version("0.1")
-        .author("Darcy Jones <darcy.ab.jones@gmail.com>")
-        .about("Tools for finding RIP-like patterns in DNA")
-        .subcommand(cli_sub_sliding("gc", "Calculate GC% in a sliding window."))
-        .subcommand(cli_sub_sliding("cri", "Calculate CRI in a sliding window."))
-        .subcommand(cli_sub_snp())
-}
-
-/// Arguments for the sliding window family of subcommands.
-/// This allows us to use the same config for GC and CRI windows.
-pub fn cli_sub_sliding(name: &'static str, about: &'static str) -> CliApp {
-    SubCommand::with_name(name)
-        .about(about)
-        .arg(
-            Arg::with_name("fasta")
-                .help(
-                    "The reference fasta to calculate windows over. \
-                     Use '-' for stdin.",
-                )
-                .index(1)
-                .required(true)
-                .validator(is_file),
-        )
-        .arg(
-            Arg::with_name("window")
-                .short("w")
-                .long("size")
-                .help("The size of the window")
-                .default_value("5000")
-                .takes_value(true)
-                .validator(is_usize),
-        )
-        .arg(
-            Arg::with_name("step")
-                .short("s")
-                .long("step")
-                .help("The step")
-                .default_value("1000")
-                .takes_value(true)
-                .validator(is_usize),
-        )
-        .arg(
-            Arg::with_name("outfile")
-                .short("o")
-                .long("outfile")
-                .help("Where to write output to. Use '-' for stdout (default).")
-                .default_value("-")
-                .takes_value(true)
-                .validator(is_file),
-        )
-}
-
-/// Arguments for the SNP subcommand
-pub fn cli_sub_snp() -> CliApp {
-    SubCommand::with_name("snp")
-        .about("Find snps that are RIP-like")
-        .arg(
-            Arg::with_name("infasta")
-                .help("The reference fasta. Use '-' for stdin.")
-                .required(true)
-                .validator(is_file),
-        )
-        .arg(
-            Arg::with_name("invcf")
-                .help(
-                    "The genotyped vcf. GZIPped files will be automatically \
-                     unzipped. Use '-' for stdin.",
-                )
-                .required(true)
-                .validator(is_file),
-        )
-}
-
-/// Get the actual provided arguments given the cli and argv.
-pub fn eval_cli(app: CliApp, args: env::ArgsOs) -> ArgMatches<'static> {
-    app.get_matches_from(args)
-}
-
-/// A trait for parsing clap arguments into our own structs.
-/// We also give the opportunity for parsing to fail, so
-/// return a Result.
-pub trait Config {
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, ErrorKind>;
-}
-
-/// The config struct for windowed CLI subcommands.
-#[derive(Debug)]
-pub struct WindowConfig {
-    pub fasta: PathBuf,
-    pub outfile: PathBuf,
-    pub window: usize,
-    pub step: usize,
-}
-
-impl Config for WindowConfig {
-    /// Parse provided argument matches to our structure.
-    /// Raising errors if incorrect args provided.
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, ErrorKind> {
-        let fasta = parse_file(app.value_of("fasta"))?;
-        let outfile = parse_file(app.value_of("outfile"))?;
-        let window = parse_usize(app.value_of("window"))?;
-        let step = parse_usize(app.value_of("step"))?;
-        let config = Self {
-            fasta: fasta,
-            outfile: outfile,
-            window: window,
-            step: step,
-        };
-        Ok(Box::new(config))
-    }
-}
-
-/// The config struct for the SNP cli subcommand
-#[derive(Debug)]
-pub struct SNPConfig {
-    pub fasta: PathBuf,
-    pub vcf: PathBuf,
-}
-
-impl Config for SNPConfig {
-    /// Parse provided argument matches to our structure.
-    /// Raising errors if incorrect args provided.
-    fn parse_clap(app: &ArgMatches<'static>) -> Result<Box<Self>, ErrorKind> {
-        let fasta = parse_file(app.value_of("infasta"))?;
-        let vcf = parse_file(app.value_of("invcf"))?;
-        let config = Self {
-            fasta: fasta,
-            vcf: vcf,
-        };
-        Ok(Box::new(config))
-    }
 }

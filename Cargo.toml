@@ -5,13 +5,10 @@ authors = ["Darcy Jones <darcy.ab.jones@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-rust-htslib = "0.24.0"
-bio = "0.28.2"
-failure = "0.1.5"
+#rust-htslib = "0.26.0"
+#bio = "0.29.0"
+snafu = "0.6.0"
 countrs = { git = "https://github.com/darcyabjones/countrs", branch = "master" }
 windowrs = { git = "https://github.com/darcyabjones/windowrs", branch = "master" }
-
-[dependencies.clap]
-version = "2.33"
-default-features = false
-features = [ "suggestions", "color", "wrap_help" ]
+structopt = "0.3.5"
+clap = "2.33.0"
