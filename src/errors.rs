@@ -20,6 +20,8 @@ pub enum ErrorKind {
     FastaReadFileError(path::PathBuf),
     #[fail(display = "Error with Fasta: {}", _0)]
     FastaError(String),
+    #[fail(display = "Couln't create file.")]
+    FileCreateError,
 }
 
 
@@ -32,11 +34,8 @@ impl ErrorKind {
             ErrorKind::PathNotExistError(_) => 1,
             ErrorKind::FastaReadFileError(_) => 1,
             ErrorKind::FastaError(_) => 1,
+            ErrorKind::FileCreateError => 1,
         }
-    }
-
-    pub fn pretty_error(&self) -> String {
-        self.to_string()
     }
 }
 

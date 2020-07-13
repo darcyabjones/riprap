@@ -1,69 +1,64 @@
 extern crate failure;
 
 mod bedgraph;
-mod cli;
 mod errors;
 mod runner;
 mod stats;
+mod snp;
 
-use std::io;
+// use std::io;
 use std::env;
 use std::process;
-use failure::{Fail, Error};
+use std::path::PathBuf;
+use failure::{Fail, ResultExt};
+use exitfailure::ExitFailure;
+use structopt::StructOpt;
 
-use cli::Config;
-use cli::WindowConfig;
-use errors::UnitResult;
 
-
-fn main() {
-    if let Err(err) = try_main() {
-        let ecode = err.ecode();
-
-        // A pipe error occurs when the consumer of this process's output has
-        // hung up. This is a normal event, and we should quit gracefully.
-        //if is_pipe_error(&err) {
-        //    process::exit(0);
-        //}
-
-        eprintln!("{}", err.pretty_error());
-
-        // If we get a non-empty backtrace (e.g., RUST_BACKTRACE=1 is set),
-        // then show it.
-        let backtrace = err
-            .backtrace()
-            .map(|b| b.to_string())
-            .unwrap_or_else(|| "".to_string());
-
-        if !backtrace.trim().is_empty() {
-            eprintln!("{}", backtrace);
-        }
-
-        process::exit(err.ecode());
-    }
+#[derive(StructOpt, Debug)]
+#[structopt(about = "the stupid content tracker")]
+enum Cli {
+    GC {
+        #[structopt(parse(from_os_str))]
+        infile: PathBuf,
+        #[structopt(parse(from_os_str), short = "o", long = "output")]
+        outfile: Option<PathBuf>,
+        #[structopt(short = "w", long = "size", default_value = "5000")]
+        window: usize,
+        #[structopt(short = "s", long = "step", default_value = "1000")]
+        step: usize,
+    },
+    CRI {
+        #[structopt(parse(from_os_str))]
+        infile: PathBuf,
+        #[structopt(parse(from_os_str), short = "o", long = "output")]
+        outfile: Option<PathBuf>,
+        #[structopt(short = "w", long = "size", default_value = "5000")]
+        window: usize,
+        #[structopt(short = "s", long = "step", default_value = "1000")]
+        step: usize,
+    },
+    SNP {
+        #[structopt(parse(from_os_str))]
+        infile: PathBuf,
+        #[structopt(parse(from_os_str))]
+        invcf: PathBuf,
+        #[structopt(parse(from_os_str), short = "o", long = "output")]
+        outfile: Option<PathBuf>,
+    },
 }
 
 
-fn try_main() -> UnitResult {
-    let app = cli::build_cli();
-    let matches = cli::eval_cli(app, env::args_os());
-
-    match matches.subcommand() {
-        ("gc", Some(m)) => {
-            WindowConfig::parse_clap(m)
-                .and_then(|c| {
-                    runner::run_gc(&c.fasta, &c.outfile, c.window, c.step)
-                })
-        },
-        ("cri", Some(m)) => {
-            WindowConfig::parse_clap(m)
-                .and_then(|c| {
-                    runner::run_cri(&c.fasta, &c.outfile, c.window, c.step)
-                })
-        },
-        _ => unreachable!() // Ok(()),
+fn main() -> Result<(), ExitFailure> {
+    match Cli::from_args() {
+        Cli::GC { infile, outfile, window, step } => runner::run_gc(&infile, &outfile, window, step)?,
+        Cli::CRI { infile, outfile, window, step } => runner::run_cri(&infile, &outfile, window, step)?,
+        Cli::SNP { infile, invcf, outfile } => runner::run_ripsnp(&infile, &invcf, &outfile)?,
     }
+
+    Ok(())
 }
+
 
 /*
 ("snp", Some(m)) => {

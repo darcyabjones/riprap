@@ -3,22 +3,46 @@
 //! `runner` is module containing high-level pipeline functions
 
 use bio::io::fasta;
+use rust_htslib::bcf;
+use rust_htslib::bcf::Read as BCFRead;
 use std::path::PathBuf;
+use std::fs::File;
+use std::io::{Write, Read, BufReader, BufWriter};
+
+use failure::{Error, ResultExt};
 
 use crate::errors::UnitResult;
+use crate::errors::ErrorKind;
 use crate::stats;
-//use crate::snp;
+use crate::snp;
 
 pub fn run_gc(
-    path: &PathBuf,
-    outfile: &PathBuf,
+    infile: &PathBuf,
+    outfile: &Option<PathBuf>,
     size: usize,
     step: usize
-) -> UnitResult {
-    let reader = fasta::Reader::from_file(path).unwrap();
+) -> Result<(), Error> {
+    let inhandle: Box<dyn Read> = if infile == &PathBuf::from("-") {
+        Box::new(std::io::stdin())
+    } else {
+        File::open(&infile)
+            .with_context(|_| format!("could not read file {:?}", infile))
+            .map(Box::new)?
+    };
+
+    let reader = fasta::Reader::new(BufReader::new(inhandle));
+
+    let outhandle: Box<dyn Write> = match outfile {
+        Some(x) => File::create(&x)
+                .with_context(|_| format!("could not open file for writing {:?}", x))
+                .map(Box::new)?,
+        None => Box::new(std::io::stdout()),
+    };
+
+    let mut writer = BufWriter::new(outhandle);
 
     for record in reader.records() {
-        let rec = record.unwrap();
+        let rec = record?;
         let frac = stats::sliding_windows(
             &rec,
             size,
@@ -27,32 +51,53 @@ pub fn run_gc(
         );
 
         for rec in frac {
-            println!("{}", rec);
+            writeln!(writer, "{}", rec)?;
         }
     }
     Ok(())
 }
 
 pub fn run_cri(
-    path: &PathBuf,
-    outfile: &PathBuf,
+    infile: &PathBuf,
+    outfile: &Option<PathBuf>,
     size: usize,
     step: usize
-) -> UnitResult {
-    let reader = fasta::Reader::from_file(path).unwrap();
+) -> Result<(), Error> {
+    let inhandle: Box<dyn Read> = if infile == &PathBuf::from("-") {
+        Box::new(std::io::stdin())
+    } else {
+        File::open(&infile)
+            .with_context(|_| format!("could not read file {:?}", infile))
+            .map(Box::new)?
+    };
+
+    let reader = fasta::Reader::new(BufReader::new(inhandle));
+
+    let outhandle: Box<dyn Write> = match outfile {
+        Some(x) => File::create(&x)
+                .with_context(|_| format!("could not open file for writing {:?}", x))
+                .map(Box::new)?,
+        None => Box::new(std::io::stdout()),
+    };
+
+    let mut writer = BufWriter::new(outhandle);
 
     for record in reader.records() {
         let rec = record.unwrap();
         let frac = stats::sliding_windows(&rec, size, step, stats::cri);
         for rec in frac {
-            println!("{}", rec);
+            writeln!(writer, "{}", rec)?;
         }
     }
     Ok(())
 }
 
-/*
-pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult {
+
+pub fn run_ripsnp(
+    fasta: &PathBuf,
+    vcf: &PathBuf,
+    outfile: &Option<PathBuf>
+) -> Result<(), Error> {
     // Get the bases first because it's easier to coerce into byte slices.
     let a: u8 = b'A';
     let t: u8 = b'T';
@@ -60,10 +105,18 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult {
     let c: u8 = b'C';
 
     let freader = fasta::Reader::from_file(fasta)
-        .map_err(|e| e.context(RRErrorKind::FastaReadFileError { path: fasta.to_path_buf() })?;
+        .with_context(|_| format!("could not read fasta file {:?}", fasta))?;
 
     let mut breader = bcf::Reader::from_path(vcf)
-        .map_err(|e| e.context(RRErrorKind::BCFPathError { path: vcf.to_path_buf() } )?;
+        .with_context(|_| format!("could not read VCF file {:?}", vcf))?;
+
+    let outhandle: Box<dyn Write> = match outfile {
+        Some(x) => File::create(&x)
+                .with_context(|_| format!("could not open file for writing {:?}", x))
+                .map(Box::new)?,
+        None => Box::new(std::io::stdout()),
+    };
+    let mut writer = BufWriter::new(outhandle);
 
     // Must convert to owned because opened the reader mutably.
     // hv = HeaderView
@@ -72,7 +125,7 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult {
 
     for record in breader.records() {
         let mut this = record
-            .map_err(|e| e.context(RRErrorKind::BCFReadError { desc: String::from("Error reading vcf record") })?;
+            .with_context(|_| format!("Error reading vcf record"))?;
 
         let alleles = this.alleles().to_owned();
 
@@ -142,7 +195,7 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult {
         //let g = snp::get_genotypes(&mut genotypes, 144);
         //println!("{:?}", g);
 
-        snp::print_bed(chrom, this_pos, strand, [this_base, next_base], isrip);
+        snp::print_bed(&mut writer, chrom, this_pos, strand, [this_base, next_base], isrip);
     }
 
     //let samples = snp::get_samples(&breader)
@@ -151,4 +204,4 @@ pub fn run_ripsnp(fasta: &PathBuf, vcf: &PathBuf) -> UnitResult {
     Ok(())
 }
 
-*/
+

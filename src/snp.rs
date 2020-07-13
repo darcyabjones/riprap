@@ -6,12 +6,14 @@ use rust_htslib::bcf;
 use rust_htslib::bcf::header::HeaderView;
 use rust_htslib::bcf::record::GenotypeAllele;
 use rust_htslib::bcf::Read;
+use std::io::Write;
 use std::collections::HashMap;
 use std::fs::File;
 use std::str;
+
+use failure::{Error, ResultExt, Fail};
 //use rust_htslib::bcf::Record;
 
-use crate::errors::RRError;
 
 pub fn get_samples(reader: &bcf::Reader) -> Vec<&str> {
     reader
@@ -32,17 +34,18 @@ pub fn fasta_to_dict(records: fasta::Reader<File>) -> HashMap<String, fasta::Rec
     output
 }
 
-pub fn get_chrom_name(rid: Option<u32>, hv: &HeaderView) -> Result<&str, MyError> {
-    let rid = rid.ok_or_else(|| MyError::BCFError {
-        desc: String::from("Missing rid encountered."),
-    })?;
 
+#[derive(Clone, Eq, PartialEq, Debug, Fail)]
+#[fail(display = "Missing RID encountered")]
+pub struct MissingRid {}
+
+pub fn get_chrom_name(rid: Option<u32>, hv: &HeaderView) -> Result<&str, Error> {
+    let rid = rid.ok_or_else(|| MissingRid {} )?;
     let chrom = hv.rid2name(rid).unwrap();
 
-    let chrom_str = str::from_utf8(chrom).map_err(|_| MyError::BCFError {
-        desc: String::from("Header contains invalid Chrom name."),
-    });
-    chrom_str
+    let chrom_str = str::from_utf8(chrom)
+        .with_context(|_| format!("Header contains invalid Chrom name."))?;
+    Ok(chrom_str)
 }
 
 pub fn get_genotypes(genotypes: &mut bcf::record::Genotypes, n: u32) -> Vec<Vec<usize>> {
@@ -62,19 +65,25 @@ pub fn get_genotypes(genotypes: &mut bcf::record::Genotypes, n: u32) -> Vec<Vec<
     output
 }
 
+
+#[derive(Clone, Eq, PartialEq, Debug, Fail)]
+#[fail(display = "VCF reference Chrom {} not in Fasta", chrom)]
+pub struct FastaMismatch {
+    chrom: String
+}
+
+
 pub fn get_chrom<'a>(
     chrom: &str,
     genome: &'a HashMap<String, fasta::Record>,
-) -> Result<&'a [u8], MyError> {
+) -> Result<&'a [u8], Error> {
     genome
         .get(chrom)
-        .ok_or_else(|| MyError::FastaError {
-            desc: String::from("VCF reference Chrom not in Fasta"),
-        })
         .map(|c| c.seq())
+        .ok_or_else(|| FastaMismatch { chrom: chrom.to_string() }.into())
 }
 
-pub fn print_bed(chrom: &str, pos: usize, strand: i8, ref_allele: [u8; 2], isrip: bool) {
+pub fn print_bed(handle: &mut impl Write, chrom: &str, pos: usize, strand: i8, ref_allele: [u8; 2], isrip: bool) {
     print!("{}\t", chrom);
     print!("{}\t", pos);
     print!("{}\t", pos + 1);
