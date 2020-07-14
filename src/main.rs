@@ -1,19 +1,14 @@
 extern crate failure;
 
 mod bedgraph;
-mod errors;
+//mod errors;
 mod runner;
-mod stats;
 mod snp;
+mod stats;
 
-// use std::io;
-use std::env;
-use std::process;
-use std::path::PathBuf;
-use failure::{Fail, ResultExt};
 use exitfailure::ExitFailure;
+use std::path::PathBuf;
 use structopt::StructOpt;
-
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "the stupid content tracker")]
@@ -48,17 +43,29 @@ enum Cli {
     },
 }
 
-
 fn main() -> Result<(), ExitFailure> {
     match Cli::from_args() {
-        Cli::GC { infile, outfile, window, step } => runner::run_gc(&infile, &outfile, window, step)?,
-        Cli::CRI { infile, outfile, window, step } => runner::run_cri(&infile, &outfile, window, step)?,
-        Cli::SNP { infile, invcf, outfile } => runner::run_ripsnp(&infile, &invcf, &outfile)?,
+        Cli::GC {
+            infile,
+            outfile,
+            window,
+            step,
+        } => runner::run_gc(&infile, &outfile, window, step)?,
+        Cli::CRI {
+            infile,
+            outfile,
+            window,
+            step,
+        } => runner::run_cri(&infile, &outfile, window, step)?,
+        Cli::SNP {
+            infile,
+            invcf,
+            outfile,
+        } => runner::run_ripsnp(&infile, &invcf, &outfile)?,
     }
 
     Ok(())
 }
-
 
 /*
 ("snp", Some(m)) => {
